@@ -26,6 +26,7 @@ class Net(torch.nn.Module):
         spk_rec = []
         for step in range(num_steps):
             spk1 = self.stdp1(x[step])
+            self.stdp1.register_forward_hook(forward_hook)
             spk_rec.append(spk1)
 
         return torch.stack(spk_rec, dim=0)
@@ -37,17 +38,20 @@ def forward_hook(module, module_inp, module_out):
     print(module_out)
     print(module.trace_post)
     print('weight_before', module.V.weight)
+
+    module.V.weight.retain_grad()
+
     for i in range(module.in_num):
         for j in range(module.out_num):
             if module_inp[i] != 0:
-                module.V.weight[j, i] -= module.trace_post[j] * global_error
+                module.V.weight[j, i] = module.V.weight[j, i] - module.trace_post[j] * global_error
             if module_out[j] != 0:
-                module.V.weight[j, i] += module.trace_pre[i] * global_error
+                module.V.weight[j, i] = module.V.weight[j, i] + module.trace_pre[i] * global_error
+
     print('weight_after', module.V.weight)
 
 
 net = Net().to(device)
-net.stdp1.register_forward_hook(forward_hook)
 num_steps = 3
 inp = torch.Tensor([[2], [0], [2]])
 spk_rec = net(inp)
