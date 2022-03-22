@@ -291,6 +291,19 @@ class LIF(SpikingNeuron):
         return spk, mem
 
     @staticmethod
+    def init_stdpleaky():
+        """
+        Used to initialize spk and mem as an empty SpikeTensor.
+        ``init_flag`` is used as an attribute in the forward pass to convert the hidden states to the same as the input.
+        """
+        spk = _SpikeTensor(init_flag=False)
+        mem = _SpikeTensor(init_flag=False)
+        trace_pre = _SpikeTensor(init_flag=False)
+        trace_post = _SpikeTensor(init_flag=False)
+
+        return spk, mem, trace_pre, trace_post
+
+    @staticmethod
     def init_synaptic():
         """Used to initialize syn and mem as an empty SpikeTensor.
         ``init_flag`` is used as an attribute in the forward pass to convert the hidden states to the same as the input.
