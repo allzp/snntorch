@@ -12,6 +12,7 @@ class STDPLeaky(LIF):
         beta,
         decay_pre,
         decay_post,
+        error_modulator=1.0,
         scaling_pre=1.0,
         scaling_post=1.0,
         threshold=1.0,
@@ -55,21 +56,21 @@ class STDPLeaky(LIF):
         self.in_num = in_num
         self.out_num = out_num
         self.V_bias = V_bias
+        self.error_modulator = error_modulator
         self.V = nn.Linear(self.in_num, self.out_num, bias=self.V_bias)
         self.V.weight.requires_grad = learn_V
 
     def forward(self, input_, spk=False, mem=False, trace_pre=False, trace_post=False):
-        if hasattr(spk, "init_flag") or hasattr(mem, "init_flag")\
-            or hasattr(trace_pre, "init_flag") or hasattr(trace_post, "init_flag"):  # only triggered on first-pass
-            spk, mem, trace_post = _SpikeTorchConv(
-                spk, mem, trace_post, input_=torch.empty(self.out_num)
-            )
+        if hasattr(spk, "init_flag") or hasattr(mem, "init_flag") or hasattr(trace_pre, "init_flag") or hasattr(trace_post, "init_flag"):  # only triggered on first-pass
+            # - spk, mem, trace_post have same output size
+            spk, mem, trace_post = _SpikeTorchConv(spk, mem, trace_post, input_=torch.empty(self.out_num))
+            # - trace_pre has input size
             trace_pre = _SpikeTorchConv(trace_pre, input_=input_)
 
         elif mem is False and hasattr(self.mem, "init_flag"):  # init_hidden case
-            self.spk, self.mem, self.trace_post = _SpikeTorchConv(
-                self.spk, self.mem, self.trace_post, input_=torch.empty(self.out_num)
-            )
+            # - spk, mem, trace_post have same output size
+            self.spk, self.mem, self.trace_post = _SpikeTorchConv(self.spk, self.mem, self.trace_post, input_=torch.empty(self.out_num))
+            # - trace_pre has input size
             self.trace_pre = _SpikeTorchConv(self.trace_pre, input_=input_)
 
         if not self.init_hidden:
@@ -84,6 +85,15 @@ class STDPLeaky(LIF):
             # - first add, then decay
             trace_pre = self.decay_pre * (trace_pre + self.scaling_pre * input_)
             trace_post = self.decay_post * (trace_post + self.scaling_post * spk)
+
+            # - weight STDP update
+            with torch.no_grad():
+                for i in range(self.in_num):
+                    for j in range(self.out_num):
+                        if input_[i] != 0:
+                            self.V.weight[j, i] -= trace_post[j] * self.error_modulator
+                        if spk[j] != 0:
+                            self.V.weight[j, i] += trace_pre[i] * self.error_modulator
 
             return spk, mem, trace_pre, trace_post
 
@@ -101,6 +111,15 @@ class STDPLeaky(LIF):
                 # - first add, then decay
                 self.trace_pre = self.decay_pre * (self.trace_pre + self.scaling_pre * input_)
                 self.trace_post = self.decay_post * (self.trace_post + self.scaling_post * self.spk)
+
+                # - weight STDP update
+                with torch.no_grad():
+                    for i in range(self.in_num):
+                        for j in range(self.out_num):
+                            if input_[i] != 0:
+                                self.V.weight[j, i] -= self.trace_post[j] * self.error_modulator
+                            if self.spk[j] != 0:
+                                self.V.weight[j, i] += self.trace_pre[i] * self.error_modulator
 
             if self.output:  # read-out layer returns output+states
                 return self.spk, self.mem, self.trace_pre, self.trace_post
@@ -151,7 +170,7 @@ class STDPLeaky(LIF):
         Intended for use in truncated backpropagation through time where hidden state variables are instance variables."""
 
         for layer in range(len(cls.instances)):
-            if isinstance(cls.instances[layer], RLeaky):
+            if isinstance(cls.instances[layer], STDPLeaky):
                 cls.instances[layer].mem.detach_()
 
     @classmethod

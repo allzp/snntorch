@@ -126,3 +126,6 @@ test_shd.ipynb
 temp.py
 batch_flag.ipynb
 examples_2/
+
+snntorch/stdp_test.py
+snntorch/stdpleaky0.py
