@@ -7,7 +7,7 @@ dtype = torch.float
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
 
-class MIF(nn.Module):
+class MIFPURE(nn.Module):
 
     def __init__(
         self,
@@ -23,7 +23,7 @@ class MIF(nn.Module):
         k_th=0.6 * 25,
 
     ):
-        super(MIF, self).__init__()
+        super(MIFPURE, self).__init__()
 
         self.R_on = R_on
         self.R_off = R_off

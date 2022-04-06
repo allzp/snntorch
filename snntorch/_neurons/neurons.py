@@ -6,6 +6,7 @@ import torch.nn as nn
 __all__ = [
     "SpikingNeuron",
     "LIF",
+    "MIFSpiking",
     "_SpikeTensor",
     "_SpikeTorchConv",
 ]
@@ -354,6 +355,111 @@ class LIF(SpikingNeuron):
         mem = _SpikeTensor(init_flag=False)
 
         return syn_exc, syn_inh, mem
+
+
+class MIFSpiking(SpikingNeuron):
+
+    def __init__(
+        self,
+        R_on=1000,
+        R_off=100000,
+        v_on=110,
+        v_off=5,
+        tau=100,
+        tau_alpha=100,
+        E1=0,
+        E2=50,
+        C=100 * 10 ** (-6),
+        k_th=0.6 * 25,
+        threshold=30.0,
+        spike_grad=None,
+        init_hidden=False,
+        inhibition=False,
+        learn_threshold=False,
+        reset_mechanism="none",
+        state_quant=False,
+        output=False,
+    ):
+        super().__init__(
+            threshold,
+            spike_grad,
+            init_hidden,
+            inhibition,
+            learn_threshold,
+            reset_mechanism,
+            state_quant,
+            output,
+        )
+
+        self._mifspiking_register_buffer(R_on, R_off, v_on, v_off, tau, tau_alpha, E1, E2, C, k_th)
+        self._reset_mechanism = reset_mechanism
+
+        # TO-DO: Heaviside --> STE; needs a tutorial change too?
+        if spike_grad is None:
+            self.spike_grad = self.Heaviside.apply
+        else:
+            self.spike_grad = spike_grad
+
+    def _mifspiking_register_buffer(self, R_on, R_off, v_on, v_off, tau, tau_alpha, E1, E2, C, k_th):
+        """Set variables as learnable parameters else register them in the buffer."""
+        self._mifspiking_buffer(R_on, R_off, v_on, v_off, tau, tau_alpha, E1, E2, C, k_th)
+
+    def _mifspiking_buffer(self, R_on, R_off, v_on, v_off, tau, tau_alpha, E1, E2, C, k_th):
+        if not isinstance(R_on, torch.Tensor):
+            R_on = torch.as_tensor(R_on)  # TODO: or .tensor() if no copy
+        self.register_buffer("R_on", R_on)
+        if not isinstance(R_off, torch.Tensor):
+            R_off = torch.as_tensor(R_off)
+        self.register_buffer("R_off", R_off)
+        if not isinstance(v_on, torch.Tensor):
+            v_on = torch.as_tensor(v_on)
+        self.register_buffer("v_on", v_on)
+        if not isinstance(v_off, torch.Tensor):
+            v_off = torch.as_tensor(v_off)
+        self.register_buffer("v_off", v_off)
+        if not isinstance(tau, torch.Tensor):
+            tau = torch.as_tensor(tau)
+        self.register_buffer("tau", tau)
+        if not isinstance(tau_alpha, torch.Tensor):
+            tau_alpha = torch.as_tensor(tau_alpha)
+        self.register_buffer("tau_alpha", tau_alpha)
+        if not isinstance(E1, torch.Tensor):
+            E1 = torch.as_tensor(E1)
+        self.register_buffer("E1", E1)
+        if not isinstance(E2, torch.Tensor):
+            E2 = torch.as_tensor(E2)
+        self.register_buffer("E2", E2)
+        if not isinstance(C, torch.Tensor):
+            C = torch.as_tensor(C)
+        self.register_buffer("C", C)
+        if not isinstance(k_th, torch.Tensor):
+            k_th = torch.as_tensor(k_th)
+        self.register_buffer("k_th", k_th)
+
+    # TODO: what is V for in SpikingNeuron
+    # def _V_register_buffer(self, V, learn_V):
+    #     if not isinstance(V, torch.Tensor):
+    #         V = torch.as_tensor(V)
+    #     if learn_V:
+    #         self.V = nn.Parameter(V)
+    #     else:
+    #         self.register_buffer("V", V)
+
+    @staticmethod
+    def init_mifspiking():
+        """
+        Used to initialize spk and mem as an empty SpikeTensor.
+        ``init_flag`` is used as an attribute in the forward pass to convert the hidden states to the same as the input.
+        """
+        a = _SpikeTensor(init_flag=False)
+        I = _SpikeTensor(init_flag=False)
+        v = _SpikeTensor(init_flag=False)
+        x1 = _SpikeTensor(init_flag=False)
+        x2 = _SpikeTensor(init_flag=False)
+        G1 = _SpikeTensor(init_flag=False)
+        G2 = _SpikeTensor(init_flag=False)
+
+        return a, I, v, x1, x2, G1, G2
 
 
 class _SpikeTensor(torch.Tensor):
