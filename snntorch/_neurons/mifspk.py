@@ -88,7 +88,7 @@ class MIFSPK(MIFSpiking):
         if self.init_hidden:
             self._mifspk_forward_cases(a, I, v, x1, x2, G1, G2)
             self.reset = self.mem_reset(self.v)
-            self.v = self.state_fn(input_)
+            self.a, self.I, self.v, self.x1, self.x2, self.G1, self.G2 = self.state_fn(input_)
 
             if self.state_quant:
                 self.v = self.state_quant(self.v)
