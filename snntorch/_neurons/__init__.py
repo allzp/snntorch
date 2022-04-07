@@ -17,7 +17,7 @@ __neuron__ = [
     "synaptic",
     "sconv2dlstm",
     "slstm",
-    "STDPLeaky",
+    "stdpeaky",
 ]
 
 from .neurons import SpikingNeuron
