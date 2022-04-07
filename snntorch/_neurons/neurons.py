@@ -358,7 +358,6 @@ class LIF(SpikingNeuron):
 
 
 class MIFSpiking(SpikingNeuron):
-
     def __init__(
         self,
         R_on=1000,
@@ -391,7 +390,9 @@ class MIFSpiking(SpikingNeuron):
             output,
         )
 
-        self._mifspiking_register_buffer(R_on, R_off, v_on, v_off, tau, tau_alpha, E1, E2, C, k_th)
+        self._mifspiking_register_buffer(
+            R_on, R_off, v_on, v_off, tau, tau_alpha, E1, E2, C, k_th
+        )
         self._reset_mechanism = reset_mechanism
 
         # TO-DO: Heaviside --> STE; needs a tutorial change too?
@@ -400,11 +401,17 @@ class MIFSpiking(SpikingNeuron):
         else:
             self.spike_grad = spike_grad
 
-    def _mifspiking_register_buffer(self, R_on, R_off, v_on, v_off, tau, tau_alpha, E1, E2, C, k_th):
+    def _mifspiking_register_buffer(
+        self, R_on, R_off, v_on, v_off, tau, tau_alpha, E1, E2, C, k_th
+    ):
         """Set variables as learnable parameters else register them in the buffer."""
-        self._mifspiking_buffer(R_on, R_off, v_on, v_off, tau, tau_alpha, E1, E2, C, k_th)
+        self._mifspiking_buffer(
+            R_on, R_off, v_on, v_off, tau, tau_alpha, E1, E2, C, k_th
+        )
 
-    def _mifspiking_buffer(self, R_on, R_off, v_on, v_off, tau, tau_alpha, E1, E2, C, k_th):
+    def _mifspiking_buffer(
+        self, R_on, R_off, v_on, v_off, tau, tau_alpha, E1, E2, C, k_th
+    ):
         if not isinstance(R_on, torch.Tensor):
             R_on = torch.as_tensor(R_on)  # TODO: or .tensor() if no copy
         self.register_buffer("R_on", R_on)
@@ -460,6 +467,25 @@ class MIFSpiking(SpikingNeuron):
         G2 = _SpikeTensor(init_flag=False)
 
         return a, I, v, x1, x2, G1, G2
+
+    @staticmethod
+    def init_stdpmifspk():
+        """
+        Used to initialize spk and mem as an empty SpikeTensor.
+        ``init_flag`` is used as an attribute in the forward pass to convert the hidden states to the same as the input.
+        """
+        spk = _SpikeTensor(init_flag=False)
+        a = _SpikeTensor(init_flag=False)
+        I = _SpikeTensor(init_flag=False)
+        v = _SpikeTensor(init_flag=False)
+        x1 = _SpikeTensor(init_flag=False)
+        x2 = _SpikeTensor(init_flag=False)
+        G1 = _SpikeTensor(init_flag=False)
+        G2 = _SpikeTensor(init_flag=False)
+        trace_pre = _SpikeTensor(init_flag=False)
+        trace_post = _SpikeTensor(init_flag=False)
+
+        return spk, a, I, v, x1, x2, G1, G2, trace_pre, trace_post
 
 
 class _SpikeTensor(torch.Tensor):

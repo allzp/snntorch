@@ -38,4 +38,5 @@ from .slstm import SLSTM
 from .stdpleaky import STDPLeaky
 from .mifpure import MIFPURE
 from .mifspk import MIFSPK
+from .stdpmifspk import STDPMIFSPK
 # from .slstm import SLSTM
