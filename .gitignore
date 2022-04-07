@@ -129,3 +129,4 @@ examples_2/
 
 snntorch/stdp_test.py
 snntorch/stdpleaky0.py
+.idea/snntorch.iml
