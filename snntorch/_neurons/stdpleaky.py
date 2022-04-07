@@ -4,7 +4,6 @@ from .neurons import *
 
 
 class STDPLeaky(LIF):
-
     def __init__(
         self,
         in_num,
@@ -41,7 +40,6 @@ class STDPLeaky(LIF):
         )
 
         # TODO: input of STDPLeaky should be spike, not weighted spike
-        # init_hidden=True because of forward hook, if not associated with mod then no way
 
         if self.init_hidden:
             self.spk, self.mem, self.trace_pre, self.trace_post = self.init_stdpleaky()
@@ -61,15 +59,24 @@ class STDPLeaky(LIF):
         self.V.weight.requires_grad = learn_V
 
     def forward(self, input_, spk=False, mem=False, trace_pre=False, trace_post=False):
-        if hasattr(spk, "init_flag") or hasattr(mem, "init_flag") or hasattr(trace_pre, "init_flag") or hasattr(trace_post, "init_flag"):  # only triggered on first-pass
+        if (
+            hasattr(spk, "init_flag")
+            or hasattr(mem, "init_flag")
+            or hasattr(trace_pre, "init_flag")
+            or hasattr(trace_post, "init_flag")
+        ):  # only triggered on first-pass
             # - spk, mem, trace_post have same output size
-            spk, mem, trace_post = _SpikeTorchConv(spk, mem, trace_post, input_=torch.empty(self.out_num))
+            spk, mem, trace_post = _SpikeTorchConv(
+                spk, mem, trace_post, input_=torch.empty(self.out_num)
+            )
             # - trace_pre has input size
             trace_pre = _SpikeTorchConv(trace_pre, input_=input_)
 
         elif mem is False and hasattr(self.mem, "init_flag"):  # init_hidden case
             # - spk, mem, trace_post have same output size
-            self.spk, self.mem, self.trace_post = _SpikeTorchConv(self.spk, self.mem, self.trace_post, input_=torch.empty(self.out_num))
+            self.spk, self.mem, self.trace_post = _SpikeTorchConv(
+                self.spk, self.mem, self.trace_post, input_=torch.empty(self.out_num)
+            )
             # - trace_pre has input size
             self.trace_pre = _SpikeTorchConv(self.trace_pre, input_=input_)
 
@@ -99,8 +106,9 @@ class STDPLeaky(LIF):
 
         # intended for truncated-BPTT where instance variables are hidden states
         if self.init_hidden:
+            # question: why there is mem and self.mem?
             self._stdpleaky_forward_cases(spk, mem, trace_pre, trace_post)
-            self.reset = self.mem_reset(self.mem)  # question: why there is mem and self.mem?
+            self.reset = self.mem_reset(self.mem)
             self.mem = self.state_fn(input_)
 
             if self.inhibition:
@@ -109,17 +117,25 @@ class STDPLeaky(LIF):
                 self.spk = self.fire(self.mem)
 
                 # - first add, then decay
-                self.trace_pre = self.decay_pre * (self.trace_pre + self.scaling_pre * input_)
-                self.trace_post = self.decay_post * (self.trace_post + self.scaling_post * self.spk)
+                self.trace_pre = self.decay_pre * (
+                    self.trace_pre + self.scaling_pre * input_
+                )
+                self.trace_post = self.decay_post * (
+                    self.trace_post + self.scaling_post * self.spk
+                )
 
                 # - weight STDP update
                 with torch.no_grad():
                     for i in range(self.in_num):
                         for j in range(self.out_num):
                             if input_[i] != 0:
-                                self.V.weight[j, i] -= self.trace_post[j] * self.error_modulator
+                                self.V.weight[j, i] -= (
+                                    self.trace_post[j] * self.error_modulator
+                                )
                             if self.spk[j] != 0:
-                                self.V.weight[j, i] += self.trace_pre[i] * self.error_modulator
+                                self.V.weight[j, i] += (
+                                    self.trace_pre[i] * self.error_modulator
+                                )
 
             if self.output:  # read-out layer returns output+states
                 return self.spk, self.mem, self.trace_pre, self.trace_post
@@ -132,8 +148,8 @@ class STDPLeaky(LIF):
 
     def _build_state_function(self, input_, mem):
         if self.reset_mechanism_val == 0:  # reset by subtraction
-            state_fn = (
-                self._base_state_function(input_, mem - self.reset * self.threshold)
+            state_fn = self._base_state_function(
+                input_, mem - self.reset * self.threshold
             )
         elif self.reset_mechanism_val == 1:  # reset to zero
             state_fn = self._base_state_function(
@@ -161,8 +177,15 @@ class STDPLeaky(LIF):
         return state_fn
 
     def _stdpleaky_forward_cases(self, spk, mem, trace_pre, trace_post):
-        if mem is not False or spk is not False or trace_pre is not False or trace_post is not False:
-            raise TypeError("When `init_hidden=True`, STDPLeaky expects 1 input argument.")
+        if (
+            spk is not False
+            or mem is not False
+            or trace_pre is not False
+            or trace_post is not False
+        ):
+            raise TypeError(
+                "When `init_hidden=True`, STDPLeaky expects 1 input argument."
+            )
 
     @classmethod
     def detach_hidden(cls):

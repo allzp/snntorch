@@ -127,6 +127,4 @@ temp.py
 batch_flag.ipynb
 examples_2/
 
-snntorch/stdp_test.py
-snntorch/stdpleaky0.py
-.idea/snntorch.iml
+snntorch/*_test_script.py
