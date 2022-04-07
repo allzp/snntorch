@@ -52,8 +52,15 @@ class MIFSPK(MIFSpiking):
             self.state_fn = self._build_state_function
 
     def forward(self, input_, a=False, I=False, v=False, x1=False, x2=False, G1=False, G2=False):
-        if hasattr(a, "init_flag") or hasattr(I, "init_flag") or hasattr(v, "init_flag") or hasattr(x1, "init_flag") \
-            or hasattr(x2, "init_flag") or hasattr(G1, "init_flag") or hasattr(G2, "init_flag"):  # only triggered on first-pass
+        if (
+            hasattr(a, "init_flag")
+            or hasattr(I, "init_flag")
+            or hasattr(v, "init_flag")
+            or hasattr(x1, "init_flag")
+            or hasattr(x2, "init_flag")
+            or hasattr(G1, "init_flag")
+            or hasattr(G2, "init_flag")
+        ):  # only triggered on first-pass
             a, I, v, x1, x2, G1, G2 = _SpikeTorchConv(a, I, v, x1, x2, G1, G2, input_=input_)
         elif v is False and hasattr(self.v, "init_flag"):  # init_hidden case
             self.a, self.I, self.v, self.x1, self.x2, self.G1, self.G2 = _SpikeTorchConv(
@@ -170,8 +177,14 @@ class MIFSPK(MIFSpiking):
         Intended for use in truncated backpropagation through time where hidden state variables are instance variables."""
 
         for layer in range(len(cls.instances)):
-            if isinstance(cls.instances[layer], Leaky):
-                cls.instances[layer].mem.detach_()
+            if isinstance(cls.instances[layer], MIFSPK):
+                cls.instances[layer].a.detach_()
+                cls.instances[layer].I.detach_()
+                cls.instances[layer].v.detach_()
+                cls.instances[layer].x1.detach_()
+                cls.instances[layer].x2.detach_()
+                cls.instances[layer].G1.detach_()
+                cls.instances[layer].G2.detach_()
 
     @classmethod
     def reset_hidden(cls):
@@ -179,5 +192,12 @@ class MIFSPK(MIFSpiking):
         Intended for use where hidden state variables are instance variables.
         Assumes hidden states have a batch dimension already."""
         for layer in range(len(cls.instances)):
-            if isinstance(cls.instances[layer], Leaky):
+            if isinstance(cls.instances[layer], MIFSPK):
                 cls.instances[layer].mem = _SpikeTensor(init_flag=False)
+                cls.instances[layer].a = _SpikeTensor(init_flag=False)
+                cls.instances[layer].I = _SpikeTensor(init_flag=False)
+                cls.instances[layer].v = _SpikeTensor(init_flag=False)
+                cls.instances[layer].x1 = _SpikeTensor(init_flag=False)
+                cls.instances[layer].x2 = _SpikeTensor(init_flag=False)
+                cls.instances[layer].G1 = _SpikeTensor(init_flag=False)
+                cls.instances[layer].G2 = _SpikeTensor(init_flag=False)

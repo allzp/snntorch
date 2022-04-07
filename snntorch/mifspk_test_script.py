@@ -8,7 +8,7 @@ class Net(torch.nn.Module):
     def __init__(self):
         super().__init__()
 
-        self.mif1 = snn.MIFSPK()
+        self.mif1 = snn.MIFSPK(init_hidden=False)
 
     def forward(self, x):
         a, I, v, x1, x2, G1, G2 = self.mif1.init_mifspiking()
@@ -25,6 +25,7 @@ class Net(torch.nn.Module):
 
         for step in range(num_steps):
             spk, a, I, v, x1, x2, G1, G2 = self.mif1(x[step], a, I, v, x1, x2, G1, G2)
+            # spk = self.mif1(x[step])
             spk_rec.append(spk)
             a_rec.append(a)
             I_rec.append(I)
@@ -44,6 +45,7 @@ net = Net().to(device)
 num_steps = 3
 inp = torch.Tensor([[2], [0], [2]])
 spk_rec, a_rec, I_rec, v_rec, x1_rec, x2_rec, G1_rec, G2_rec = net(inp)
+# spk_rec = net(inp)
 print(spk_rec)
 print(a_rec)
 print(I_rec)

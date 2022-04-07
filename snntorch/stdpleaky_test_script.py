@@ -57,12 +57,39 @@ def forward_hook(module, module_inp, module_out):
 
     print('weight_after', module.V.weight)
 
+class Net_init(torch.nn.Module):
 
-net = Net().to(device)
+    def __init__(self):
+        super().__init__()
+
+        self.stdp1 = snn.STDPLeaky(
+            in_num=1,
+            out_num=2,
+            beta=0.5,
+            decay_pre=0.5,
+            decay_post=0.5,
+            init_hidden=True,
+            learn_V=False,)
+
+    def forward(self, x):
+        self.stdp1.V.weight.data = torch.Tensor([[0.8], [0]])
+
+        # Record the final layer
+        spk_rec = []
+
+        for step in range(num_steps):
+            spk1 = self.stdp1(x[step])
+            # self.stdp1.register_forward_hook(forward_hook)
+            spk_rec.append(spk1)
+
+        return torch.stack(spk_rec, dim=0)
+
+net = Net_init().to(device)
 num_steps = 3
 inp = torch.Tensor([[2], [0], [2]])
-spk_rec, mem_rec, trace_pre_rec, trace_post_rec = net(inp)
+# spk_rec, mem_rec, trace_pre_rec, trace_post_rec = net(inp)
+spk_rec = net(inp)
 print(spk_rec)
-print(mem_rec)
-print(trace_pre_rec)
-print(trace_post_rec)
+# print(mem_rec)
+# print(trace_pre_rec)
+# print(trace_post_rec)
