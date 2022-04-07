@@ -18,7 +18,7 @@ __neuron__ = [
     "sconv2dlstm",
     "slstm",
     "stdpleaky",
-    "mif",
+    "mifpure",
     "mifspk",
 ]
 
