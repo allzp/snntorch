@@ -65,6 +65,7 @@ class STDPMIFSPK(MIFSpiking):
 
         if self.init_hidden:
             (
+                self.spk,
                 self.a,
                 self.I,
                 self.v,
