@@ -23,6 +23,7 @@ class STDPLeaky(LIF):
         # learn_decay_pre=False,  # TODO: maybe learnable
         # learn_decay_post=False,  # TODO: maybe learnable
         learn_V=False,  # TODO: combine STDP with gradient
+        stdp_train=True,  # STDP train flag
         learn_threshold=False,
         reset_mechanism="subtract",
         output=False,
@@ -57,6 +58,7 @@ class STDPLeaky(LIF):
         self.error_modulator = error_modulator
         self.V = nn.Linear(self.in_num, self.out_num, bias=self.V_bias)
         self.V.weight.requires_grad = learn_V
+        self.stdp_train = stdp_train
 
     def forward(self, input_, spk=False, mem=False, trace_pre=False, trace_post=False):
         if (
@@ -89,18 +91,19 @@ class STDPLeaky(LIF):
             else:
                 spk = self.fire(mem)
 
-            # - first add, then decay
-            trace_pre = self.decay_pre * (trace_pre + self.scaling_pre * input_)
-            trace_post = self.decay_post * (trace_post + self.scaling_post * spk)
+            # - first decay, then add
+            trace_pre = self.decay_pre * trace_pre + self.scaling_pre * input_
+            trace_post = self.decay_post * trace_post + self.scaling_post * spk
 
             # - weight STDP update
-            with torch.no_grad():
-                for i in range(self.in_num):
-                    for j in range(self.out_num):
-                        if input_[i] != 0:
-                            self.V.weight[j, i] -= trace_post[j] * self.error_modulator
-                        if spk[j] != 0:
-                            self.V.weight[j, i] += trace_pre[i] * self.error_modulator
+            if self.stdp_train:
+                with torch.no_grad():
+                    for i in range(self.in_num):
+                        for j in range(self.out_num):
+                            if input_[0, i] != 0:
+                                self.V.weight[j, i] -= trace_post[0, j] * self.error_modulator
+                            if spk[0, j] != 0:
+                                self.V.weight[j, i] += trace_pre[0, i] * self.error_modulator
 
             return spk, mem, trace_pre, trace_post
 
@@ -116,13 +119,9 @@ class STDPLeaky(LIF):
             else:
                 self.spk = self.fire(self.mem)
 
-                # - first add, then decay
-                self.trace_pre = self.decay_pre * (
-                    self.trace_pre + self.scaling_pre * input_
-                )
-                self.trace_post = self.decay_post * (
-                    self.trace_post + self.scaling_post * self.spk
-                )
+                # - first decay, then add
+                self.trace_pre = self.decay_pre * self.trace_pre + self.scaling_pre * input_
+                self.trace_post = self.decay_post * self.trace_post + self.scaling_post * self.spk
 
                 # - weight STDP update
                 with torch.no_grad():
