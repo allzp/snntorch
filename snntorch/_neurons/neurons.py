@@ -85,6 +85,8 @@ class SpikingNeuron(nn.Module):
     def mem_reset(self, mem):
         """Generates detached reset signal if mem > threshold.
         Returns reset."""
+        print(mem.device)
+        print(self.threshold.device)
         mem_shift = mem - self.threshold
         reset = self.spike_grad(mem_shift).clone().detach()
 

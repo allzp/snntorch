@@ -69,7 +69,7 @@ class STDPLeaky(LIF):
         ):  # only triggered on first-pass
             # - spk, mem, trace_post have same output size
             spk, mem, trace_post = _SpikeTorchConv(
-                spk, mem, trace_post, input_=torch.empty(self.out_num)
+                spk, mem, trace_post, input_=torch.empty(self.out_num).to(input_.device)
             )
             # - trace_pre has input size
             trace_pre = _SpikeTorchConv(trace_pre, input_=input_)
