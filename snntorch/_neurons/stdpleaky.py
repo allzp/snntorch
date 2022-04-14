@@ -12,8 +12,8 @@ class STDPLeaky(LIF):
         decay_pre,
         decay_post,
         error_modulator=1.0,
-        scaling_pre=1.0,
-        scaling_post=1.0,
+        lr_pre=10**(-4),
+        lr_post=10**(-4),
         threshold=1.0,
         V_bias=False,
         spike_grad=None,
@@ -49,9 +49,9 @@ class STDPLeaky(LIF):
             self.state_fn = self._build_state_function
 
         self.decay_pre = decay_pre
-        self.scaling_pre = scaling_pre
+        self.lr_pre = lr_pre
         self.decay_post = decay_post
-        self.scaling_post = scaling_post
+        self.lr_post = lr_post
         self.in_num = in_num
         self.out_num = out_num
         self.V_bias = V_bias
@@ -92,20 +92,28 @@ class STDPLeaky(LIF):
                 spk = self.fire(mem)
 
             # - first decay, then add
-            trace_pre = self.decay_pre * trace_pre + self.scaling_pre * input_
-            trace_post = self.decay_post * trace_post + self.scaling_post * spk
+            trace_pre = self.decay_pre * trace_pre + self.lr_pre * input_
+            trace_post = self.decay_post * trace_post + self.lr_post * spk
 
             # - weight STDP update
             if self.stdp_train:
                 with torch.no_grad():
-                    for i in range(self.in_num):
-                        for j in range(self.out_num):
-                            spike_ave = torch.sum(input_[:, i] != 0) / input_.shape[0]
-                            trace_ave = torch.sum(trace_post[:, j]) / input_.shape[0]
-                            self.V.weight[j, i] -= spike_ave * trace_ave * self.error_modulator
-                            spike_ave = torch.sum(spk[:, j] != 0) / input_.shape[0]
-                            trace_ave = torch.sum(trace_pre[:, i]) / input_.shape[0]
-                            self.V.weight[j, i] += spike_ave * trace_ave * self.error_modulator
+                    # TODO:sum or mean across batch?
+                    input_m = torch.unsqueeze(input_, 1)
+                    trace_post_m = torch.unsqueeze(trace_post, 2)
+                    self.V.weight -= torch.sum(torch.bmm(trace_post_m, input_m), dim=0) * self.error_modulator
+                    spk_m = torch.unsqueeze(spk, 2)
+                    trace_pre_m = torch.unsqueeze(trace_pre, 1)
+                    self.V.weight += torch.sum(torch.bmm(spk_m, trace_pre_m), dim=0) * self.error_modulator
+
+                    # for i in range(self.in_num):
+                    #     for j in range(self.out_num):
+                    #         spike_ave = torch.sum(input_[:, i] != 0) / input_.shape[0]
+                    #         trace_ave = torch.sum(trace_post[:, j]) / input_.shape[0]
+                    #         self.V.weight[j, i] -= spike_ave * trace_ave * self.error_modulator
+                    #         spike_ave = torch.sum(spk[:, j] != 0) / input_.shape[0]
+                    #         trace_ave = torch.sum(trace_pre[:, i]) / input_.shape[0]
+                    #         self.V.weight[j, i] += spike_ave * trace_ave * self.error_modulator
 
             return spk, mem, trace_pre, trace_post
 
