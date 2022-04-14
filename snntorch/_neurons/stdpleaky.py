@@ -100,10 +100,10 @@ class STDPLeaky(LIF):
                 with torch.no_grad():
                     for i in range(self.in_num):
                         for j in range(self.out_num):
-                            if input_[0, i] != 0:
-                                self.V.weight[j, i] -= trace_post[0, j] * self.error_modulator
-                            if spk[0, j] != 0:
-                                self.V.weight[j, i] += trace_pre[0, i] * self.error_modulator
+                            if input_[i] != 0:
+                                self.V.weight[j, i] -= trace_post[j] * self.error_modulator
+                            if spk[j] != 0:
+                                self.V.weight[j, i] += trace_pre[i] * self.error_modulator
 
             return spk, mem, trace_pre, trace_post
 
