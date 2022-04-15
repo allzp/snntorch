@@ -106,15 +106,6 @@ class STDPLeaky(LIF):
                     trace_pre_m = torch.unsqueeze(trace_pre, 1)
                     self.V.weight += torch.sum(torch.bmm(spk_m, trace_pre_m), dim=0) * self.error_modulator
 
-                    # for i in range(self.in_num):
-                    #     for j in range(self.out_num):
-                    #         spike_ave = torch.sum(input_[:, i] != 0) / input_.shape[0]
-                    #         trace_ave = torch.sum(trace_post[:, j]) / input_.shape[0]
-                    #         self.V.weight[j, i] -= spike_ave * trace_ave * self.error_modulator
-                    #         spike_ave = torch.sum(spk[:, j] != 0) / input_.shape[0]
-                    #         trace_ave = torch.sum(trace_pre[:, i]) / input_.shape[0]
-                    #         self.V.weight[j, i] += spike_ave * trace_ave * self.error_modulator
-
             return spk, mem, trace_pre, trace_post
 
         # intended for truncated-BPTT where instance variables are hidden states
@@ -130,21 +121,17 @@ class STDPLeaky(LIF):
                 self.spk = self.fire(self.mem)
 
                 # - first decay, then add
-                self.trace_pre = self.decay_pre * self.trace_pre + self.scaling_pre * input_
-                self.trace_post = self.decay_post * self.trace_post + self.scaling_post * self.spk
+                self.trace_pre = self.decay_pre * self.trace_pre + self.lr_pre * input_
+                self.trace_post = self.decay_post * self.trace_post + self.lr_post * self.spk
 
                 # - weight STDP update
                 with torch.no_grad():
-                    for i in range(self.in_num):
-                        for j in range(self.out_num):
-                            if input_[i] != 0:
-                                self.V.weight[j, i] -= (
-                                    self.trace_post[j] * self.error_modulator
-                                )
-                            if self.spk[j] != 0:
-                                self.V.weight[j, i] += (
-                                    self.trace_pre[i] * self.error_modulator
-                                )
+                    input_m = torch.unsqueeze(input_, 1)
+                    trace_post_m = torch.unsqueeze(self.trace_post, 2)
+                    self.V.weight -= torch.sum(torch.bmm(trace_post_m, input_m), dim=0) * self.error_modulator
+                    spk_m = torch.unsqueeze(spk, 2)
+                    trace_pre_m = torch.unsqueeze(self.trace_pre, 1)
+                    self.V.weight += torch.sum(torch.bmm(spk_m, trace_pre_m), dim=0) * self.error_modulator
 
             if self.output:  # read-out layer returns output+states
                 return self.spk, self.mem, self.trace_pre, self.trace_post
