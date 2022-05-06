@@ -31,7 +31,7 @@ class SpikingNeuron(nn.Module):
         threshold=1.0,
         spike_grad=None,
         init_hidden=False,
-        inhibition=False,
+        winner=False,
         learn_threshold=False,
         reset_mechanism="subtract",
         state_quant=False,
@@ -41,10 +41,10 @@ class SpikingNeuron(nn.Module):
 
         SpikingNeuron.instances.append(self)
         self.init_hidden = init_hidden
-        self.inhibition = inhibition
+        self.winner = winner
         self.output = output
 
-        self._snn_cases(reset_mechanism, inhibition)
+        self._snn_cases(reset_mechanism, winner)
         self._snn_register_buffer(threshold, learn_threshold, reset_mechanism)
         self._reset_mechanism = reset_mechanism
 
@@ -68,9 +68,13 @@ class SpikingNeuron(nn.Module):
 
         return spk
 
-    def fire_inhibition(self, batch_size, mem):
+    def fire_winner(self, batch_size, mem):
         """Generates spike if mem > threshold, only for the largest membrane. All others neurons will be inhibited for that time step.
         Returns spk."""
+
+        if self.state_quant:
+            mem = self.state_quant(mem)
+
         mem_shift = mem - self.threshold
         index = torch.argmax(mem_shift, dim=1)
         spk_tmp = self.spike_grad(mem_shift)
@@ -90,12 +94,12 @@ class SpikingNeuron(nn.Module):
 
         return reset
 
-    def _snn_cases(self, reset_mechanism, inhibition):
+    def _snn_cases(self, reset_mechanism, winner):
         self._reset_cases(reset_mechanism)
 
-        if inhibition:
+        if winner:
             warn(
-                "Inhibition is an unstable feature that has only been tested for dense (fully-connected) layers. Use with caution!",
+                "Winner is an unstable feature that has only been tested for dense (fully-connected) layers. Use with caution!",
                 UserWarning,
             )
 
@@ -224,7 +228,7 @@ class LIF(SpikingNeuron):
         threshold=1.0,
         spike_grad=None,
         init_hidden=False,
-        inhibition=False,
+        winner=False,
         learn_beta=False,
         learn_threshold=False,
         reset_mechanism="subtract",
@@ -235,7 +239,7 @@ class LIF(SpikingNeuron):
             threshold,
             spike_grad,
             init_hidden,
-            inhibition,
+            winner,
             learn_threshold,
             reset_mechanism,
             state_quant,
