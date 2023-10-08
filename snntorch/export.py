@@ -19,8 +19,8 @@ def _extract_snntorch_module(module:torch.nn.Module) -> Optional[nir.NIRNode]:
 
     if isinstance(module, Synaptic):
         return nir.CubaLIF(
-            tau_syn = 1 / (1 - module.beta).detach(),
-            tau_mem = 1 / (1 - module.alpha).detach(),
+            tau_syn = 1 / (1 - module.alpha).detach(),
+            tau_mem = 1 / (1 - module.beta).detach(),
             v_threshold = module.threshold.detach(),
             v_leak = torch.zeros_like(module.beta),
             r = module.beta.detach(),
